@@ -572,7 +572,7 @@ def _search_result_to_row(item: object) -> tuple[str, str, str, str, str]:
         album = ""
         duration = ""
     elif isinstance(item, Playlist):
-        artist = ", ".join(a.name for a in item.promoted_artists) if item.promoted_artists else ""
+        artist = ", ".join(a.name for a in item.promoted_artists if a and a.name) if item.promoted_artists else ""
         title = item.name
         album = ""
         duration = _format_duration(item.duration) if hasattr(item, "duration") else ""
@@ -621,7 +621,7 @@ def search(
     _init_search_type_map()
 
     # Validate search type
-    type_lower = type_.lower() if type_ else "track"
+    type_lower = type_.lower()
     if type_lower not in SEARCH_TYPE_MAP:
         valid_types = ", ".join(SEARCH_TYPE_MAP.keys())
         print(f"Invalid search type '{type_}'. Valid types are: {valid_types}")
@@ -650,7 +650,7 @@ def search(
             all_items.extend(items)
 
     # Filter out unavailable items
-    all_items = [item for item in all_items if not (hasattr(item, "available") and item.available is False)]
+    all_items = [item for item in all_items if not hasattr(item, "available") or item.available is not False]
 
     # Limit results
     if limit and limit > 0:
