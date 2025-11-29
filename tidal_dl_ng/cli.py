@@ -28,10 +28,39 @@ from tidal_dl_ng.helper.tidal import (
     get_tidal_media_id,
     get_tidal_media_type,
     instantiate_media,
+    name_builder_artist,
+    name_builder_title,
+    search_results_all,
     url_ending_clean,
 )
 from tidal_dl_ng.helper.wrapper import LoggerWrapped
 from tidal_dl_ng.model.cfg import HelpSettings
+
+# Search type mapping from string to tidalapi class
+SEARCH_TYPE_MAP: dict[str, type | None] = {}
+
+
+def _init_search_type_map() -> None:
+    """Initialize the search type map with tidalapi classes.
+
+    This function imports tidalapi classes and populates the SEARCH_TYPE_MAP.
+    It's called lazily to avoid import issues during module load.
+    """
+    global SEARCH_TYPE_MAP
+    if not SEARCH_TYPE_MAP:
+        from tidalapi import Album, Playlist, Track, Video
+        from tidalapi.artist import Artist
+
+        SEARCH_TYPE_MAP.update(
+            {
+                "track": Track,
+                "album": Album,
+                "artist": Artist,
+                "video": Video,
+                "playlist": Playlist,
+            }
+        )
+
 
 app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, add_completion=False)
 app_dl_fav = typer.Typer(
@@ -492,6 +521,161 @@ def _download_fav_factory(ctx: typer.Context, func_name_favorites: str) -> bool:
     func_favorites: Callable = getattr(ctx.obj[CTX_TIDAL].session.user.favorites, func_name_favorites)
     media_urls: list[str] = [media.share_url for media in func_favorites()]
     return _download(ctx, media_urls, try_login=False)
+
+
+def _format_duration(seconds: int) -> str:
+    """Format duration from seconds to mm:ss format.
+
+    Args:
+        seconds (int): Duration in seconds.
+
+    Returns:
+        str: Formatted duration string (mm:ss).
+    """
+    if seconds < 0:
+        return ""
+    m, s = divmod(seconds, 60)
+    return f"{m:02d}:{s:02d}"
+
+
+def _search_result_to_row(item: object) -> tuple[str, str, str, str, str]:
+    """Convert a search result item to a table row.
+
+    Args:
+        item: The search result item (Track, Video, Album, Artist, or Playlist).
+
+    Returns:
+        tuple[str, str, str, str, str]: A tuple of (artist, title, album, duration, share_url).
+    """
+    from tidalapi import Album, Playlist, Track, Video
+    from tidalapi.artist import Artist
+
+    artist: str = ""
+    title: str = ""
+    album: str = ""
+    duration: str = ""
+    share_url: str = getattr(item, "share_url", "") or ""
+
+    if isinstance(item, Track | Video):
+        artist = name_builder_artist(item)
+        title = name_builder_title(item)
+        album = item.album.name if hasattr(item, "album") and item.album else ""
+        duration = _format_duration(item.duration) if hasattr(item, "duration") else ""
+    elif isinstance(item, Album):
+        artist = name_builder_artist(item)
+        title = ""
+        album = item.name
+        duration = _format_duration(item.duration) if hasattr(item, "duration") else ""
+    elif isinstance(item, Artist):
+        artist = item.name
+        title = ""
+        album = ""
+        duration = ""
+    elif isinstance(item, Playlist):
+        artist = ", ".join(a.name for a in item.promoted_artists) if item.promoted_artists else ""
+        title = item.name
+        album = ""
+        duration = _format_duration(item.duration) if hasattr(item, "duration") else ""
+
+    return (artist, title, album, duration, share_url)
+
+
+@app.command(name="search")
+def search(
+    ctx: typer.Context,
+    query: Annotated[str, typer.Argument(help="Search query string.")],
+    type_: Annotated[
+        str | None,
+        typer.Option(
+            "--type",
+            "-t",
+            help="Media type to search for (track, album, artist, video, playlist). Default is track.",
+        ),
+    ] = "track",
+    limit: Annotated[
+        int | None,
+        typer.Option(
+            "--limit",
+            "-l",
+            help="Maximum number of results to display. Default is 20.",
+        ),
+    ] = 20,
+) -> None:
+    """Search for tracks and other media on TIDAL.
+
+    Search results are displayed in a table format with artist, title, album,
+    duration, and share URL. Use the share URL with the 'dl' command to download.
+
+    Examples:
+        tidal-dl-ng search "Bohemian Rhapsody"
+        tidal-dl-ng search "Queen" --type artist
+        tidal-dl-ng search "A Night at the Opera" --type album --limit 10
+
+    Args:
+        ctx (typer.Context): Typer context object.
+        query (str): Search query string.
+        type_ (str | None, optional): Media type to search. Defaults to "track".
+        limit (int | None, optional): Maximum results to display. Defaults to 20.
+    """
+    # Initialize search type map
+    _init_search_type_map()
+
+    # Validate search type
+    type_lower = type_.lower() if type_ else "track"
+    if type_lower not in SEARCH_TYPE_MAP:
+        valid_types = ", ".join(SEARCH_TYPE_MAP.keys())
+        print(f"Invalid search type '{type_}'. Valid types are: {valid_types}")
+        raise typer.Exit(code=1)
+
+    # Login to TIDAL
+    ctx.invoke(login, ctx)
+
+    # Get the search type class
+    search_type_class = SEARCH_TYPE_MAP[type_lower]
+    types_media = [search_type_class] if search_type_class else None
+
+    # Perform search
+    print(f"\nSearching for '{query}' ({type_lower})...")
+
+    results = search_results_all(
+        session=ctx.obj[CTX_TIDAL].session,
+        needle=query,
+        types_media=types_media,
+    )
+
+    # Collect and flatten results
+    all_items: list[object] = []
+    for _media_type, items in results.items():
+        if isinstance(items, list):
+            all_items.extend(items)
+
+    # Filter out unavailable items
+    all_items = [item for item in all_items if not (hasattr(item, "available") and item.available is False)]
+
+    # Limit results
+    if limit and limit > 0:
+        all_items = all_items[:limit]
+
+    if not all_items:
+        print(f"No results found for '{query}'.")
+        return
+
+    # Create and display table
+    console = Console()
+    table = Table(title=f"Search Results: '{query}' ({len(all_items)} results)")
+    table.add_column("#", style="dim", width=4)
+    table.add_column("Artist", style="cyan", no_wrap=False)
+    table.add_column("Title", style="green", no_wrap=False)
+    table.add_column("Album", style="magenta", no_wrap=False)
+    table.add_column("Duration", style="yellow", width=8)
+    table.add_column("Share URL", style="blue", no_wrap=False)
+
+    for idx, item in enumerate(all_items, start=1):
+        artist, title, album, duration, share_url = _search_result_to_row(item)
+        table.add_row(str(idx), artist, title, album, duration, share_url)
+
+    console.print(table)
+    print("\nTip: Use the share URL with 'tidal-dl-ng dl <URL>' to download.")
 
 
 @app.command()
