@@ -55,4 +55,11 @@ repos:
         entry: poetry run black --config pyproject.toml
         types: [python]
         language: system
-# TODO: Use https://github.com/pre-commit/mirrors-mypy
+#  - repo: local
+#    hooks:
+#      - id: pyright
+#        name: pyright
+#        entry: poetry run pyright
+#        types: [python]
+#        language: system
+#        pass_filenames: false

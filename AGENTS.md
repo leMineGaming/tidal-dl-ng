@@ -189,7 +189,7 @@ applyTo: "**/*.py"
 
 - Run Ruff for linting before committing
 - Run Black for formatting before committing
-- Run mypy for type checking
+- Run Pyright for type checking
 - Use pre-commit hooks to automate checks
 - Address all linting warnings and errors
 - Keep code complexity low (avoid deep nesting, long functions)

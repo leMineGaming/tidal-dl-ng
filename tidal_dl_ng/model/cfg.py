@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 from tidalapi import Quality
 
-from tidal_dl_ng.constants import CoverDimensions, MetadataTargetUPC, QualityVideo
+from tidal_dl_ng.constants import CoverDimensions, InitialKey, MetadataTargetUPC, QualityVideo
 
 
 @dataclass_json
@@ -63,6 +63,7 @@ class Settings:
     # Rate limiting for API calls (tweaking variables)
     api_rate_limit_batch_size: int = 20  # Number of albums to process before applying rate limit delay
     api_rate_limit_delay_sec: float = 3.0  # Delay in seconds between batches to avoid rate limiting
+    initial_key_format: InitialKey = InitialKey.ALPHANUMERIC
 
 
 @dataclass_json
@@ -101,7 +102,7 @@ class HelpSettings:
         "The directory of `ffmpeg.exe` must be set in %PATH%."
     )
     metadata_cover_dimension: str = (
-        "The dimensions of the cover image embedded into the track. Possible values: 320x320, 640x640, 1280x1280."
+        "The square dimensions of the cover image embedded into the track. Possible values: 80, 160, 320, 640, 1280, origin."
     )
     metadata_cover_embed: str = "Embed album cover into file."
     mark_explicit: str = "Mark explicit tracks with '🅴' in track title (only applies to metadata)."
@@ -134,6 +135,7 @@ class HelpSettings:
     )
     api_rate_limit_batch_size: str = "Number of albums to process before applying rate limit delay (tweaking variable)."
     api_rate_limit_delay_sec: str = "Delay in seconds between batches to avoid API rate limiting (tweaking variable)."
+    initial_key_format: str = "Format for Initial Key metadata tag: 'alphanumeric' (default) or 'classic'."
 
 
 @dataclass_json

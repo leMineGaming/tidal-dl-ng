@@ -1,7 +1,7 @@
 [project]
 name = "tidal-dl-ng"
 authors = [{ name = "Robert Honz", email = "<cen.sored@gmail.com>" }]
-version = "0.31.4"
+version = "0.33.0"
 description = "TIDAL Media Downloader Next Generation!"
 readme = "README.md"
 license = "AGPL-3.0-only"
@@ -41,7 +41,7 @@ pyqtdarktheme-fork = { version = "^2.3.4", optional = true }
 rich = "^14.2.0"
 toml = "^0.10.2"
 typer = "^0.20.0"
-tidalapi = "^0.8.8"
+tidalapi = "^0.8.10"
 python-ffmpeg = "^2.0.12"
 pycryptodome = "^3.23.0"
 ansi2html = "^1.9.2"
@@ -53,22 +53,22 @@ gui = ["pyside6", "pyqtdarktheme-fork"]
 optional = true
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.4.2"
-deptry = "^0.23.1"
-mypy = "^1.18.1"
-pre-commit = "^4.3.0"
-tox = "^4.31.0"
-pyupgrade = "^3.21.0"
-bandit = "^1.8.6"
+pytest = "^9.0.1"
+deptry = "^0.24.0"
+pyright = "^1.1.398"
+pre-commit = "^4.5.0"
+tox = "^4.32.0"
+pyupgrade = "^3.21.2"
+bandit = "^1.9.2"
 darglint = "^1.8.1"
 isort = { extras = ["colors"], version = "^7.0.0" }
 mypy-extensions = "^1.1.0"
 pydocstyle = "^6.3.0"
-pylint = "^4.0.1"
+pylint = "^4.0.4"
 pillow = "^12.0.0"
 pytest-cov = "^7.0.0"
-black = "^25.9.0"
-nuitka = { git = "https://github.com/Nuitka/Nuitka.git", tag = "2.8.4" }
+black = "^25.11.0"
+nuitka = "2.8.4"
 
 [tool.poetry.group.docs]
 optional = true
@@ -206,30 +206,34 @@ known_third_party = [
   "typer",
 ]
 
-[tool.mypy]
-# https://mypy.readthedocs.io/en/latest/config_file.html#using-a-pyproject-toml-file
-files = ["tidal_dl_ng"]
-python_version = "3.12"
-pretty = true
-show_traceback = true
-color_output = true
-allow_redefinition = false
-check_untyped_defs = true
-disallow_any_generics = true
-disallow_incomplete_defs = true
-ignore_missing_imports = true
-implicit_reexport = false
-no_implicit_optional = true
-show_column_numbers = true
-show_error_codes = true
-show_error_context = true
-strict_equality = true
-strict_optional = true
-warn_no_return = true
-warn_redundant_casts = true
-warn_return_any = true
-warn_unreachable = true
-warn_unused_configs = true
-warn_unused_ignores = true
-disallow_untyped_defs = true
-disallow_any_unimported = true
+[tool.pyright]
+# https://microsoft.github.io/pyright/#/configuration
+include = ["tidal_dl_ng"]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+reportMissingImports = true
+reportMissingTypeStubs = false
+reportUnusedImport = true
+reportUnusedClass = true
+reportUnusedFunction = true
+reportUnusedVariable = true
+reportDuplicateImport = true
+reportUntypedFunctionDecorator = false
+reportUntypedClassDecorator = false
+reportUntypedBaseClass = true
+reportUntypedNamedTuple = true
+reportPrivateUsage = false
+reportConstantRedefinition = true
+reportIncompatibleMethodOverride = true
+reportIncompatibleVariableOverride = true
+reportInconsistentConstructor = true
+reportOverlappingOverload = true
+reportMissingSuperCall = false
+reportUninitializedInstanceVariable = false
+reportCallInDefaultInitializer = false
+reportImplicitStringConcatenation = false
+reportUnusedCallResult = false
+reportUnusedCoroutine = true
+reportUnusedExpression = false
+reportUnnecessaryTypeIgnoreComment = true
+reportMatchNotExhaustive = true
